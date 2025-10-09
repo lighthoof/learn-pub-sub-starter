@@ -2,9 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -30,7 +27,34 @@ func main() {
 	queueType := pubsub.SimpleQueueType(1)
 	pubsub.DeclareAndBind(connection, routing.ExchangePerilDirect, queueName, routing.PauseKey, queueType)
 
-	sigChan := make(chan os.Signal, 2)
+	gameState := gamelogic.NewGameState(username)
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+
+		command := input[0]
+		switch command {
+		case "spawn":
+			gameState.CommandSpawn(input)
+		case "move":
+			gameState.CommandMove(input)
+		case "status":
+			gameState.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "spam":
+			fmt.Println("Spamming not allowed yet!")
+		case "quit":
+			gamelogic.PrintQuit()
+			return
+		default:
+			fmt.Println("Command unclear. Please use a command from the list")
+		}
+	}
+
+	/*sigChan := make(chan os.Signal, 2)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	<-sigChan
+	<-sigChan*/
 }

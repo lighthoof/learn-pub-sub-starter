@@ -30,14 +30,16 @@ func main() {
 		if len(input) == 0 {
 			continue
 		}
+
 		command := input[0]
-		if command == "pause" {
+		switch command {
+		case "pause":
 			gamePause(connection, true)
-		} else if command == "resume" {
+		case "resume":
 			gamePause(connection, true)
-		} else if command == "quit" {
-			break
-		} else {
+		case "quit":
+			return
+		default:
 			fmt.Println("Command unclear. Please use a command from the list")
 		}
 	}
@@ -45,9 +47,6 @@ func main() {
 	/*sigChan := make(chan os.Signal, 2)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan*/
-
-	fmt.Println("\nShutting down...")
-
 }
 
 func gamePause(connection *amqp.Connection, toPause bool) {
@@ -57,7 +56,7 @@ func gamePause(connection *amqp.Connection, toPause bool) {
 	}
 
 	pauseMsg := routing.PlayingState{IsPaused: toPause}
-	err = pubsub.PublishJSON(pauseChan, string(routing.ExchangePerilDirect), string(routing.PauseKey), pauseMsg)
+	err = pubsub.PublishJSON(pauseChan, routing.ExchangePerilDirect, routing.PauseKey, pauseMsg)
 	if err != nil {
 		fmt.Println("Cannot publish pause message")
 	}
