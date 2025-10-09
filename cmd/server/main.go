@@ -21,6 +21,14 @@ func main() {
 	defer connection.Close()
 	fmt.Println("Connection successful")
 
+	pubsub.DeclareAndBind(
+		connection,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.GameLogSlug+".*",
+		pubsub.Durable,
+	)
+
 	gamelogic.PrintServerHelp()
 
 	/*

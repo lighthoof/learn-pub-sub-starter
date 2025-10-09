@@ -24,8 +24,13 @@ func main() {
 	username, _ := gamelogic.ClientWelcome()
 
 	queueName := routing.PauseKey + "." + username
-	queueType := pubsub.SimpleQueueType(1)
-	pubsub.DeclareAndBind(connection, routing.ExchangePerilDirect, queueName, routing.PauseKey, queueType)
+	pubsub.DeclareAndBind(
+		connection,
+		routing.ExchangePerilDirect,
+		queueName,
+		routing.PauseKey,
+		pubsub.Transient,
+	)
 
 	gameState := gamelogic.NewGameState(username)
 	for {
