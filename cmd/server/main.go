@@ -2,17 +2,17 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
 	rmqConnString := "amqp://guest:guest@localhost:5672/"
 
-	//fmt.Println("Starting Peril server...")
+	fmt.Println("Starting Peril server...")
 	connection, err := amqp.Dial(rmqConnString)
 	if err != nil {
 		fmt.Println("Cannot obtain a server connection")
@@ -21,9 +21,44 @@ func main() {
 	defer connection.Close()
 	fmt.Println("Connection successful")
 
-	sigChan := make(chan os.Signal, 2)
+	gamelogic.PrintServerHelp()
+
+	/*
+		}*/
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+		command := input[0]
+		if command == "pause" {
+			gamePause(connection, true)
+		} else if command == "resume" {
+			gamePause(connection, true)
+		} else if command == "quit" {
+			break
+		} else {
+			fmt.Println("Command unclear. Please use a command from the list")
+		}
+	}
+
+	/*sigChan := make(chan os.Signal, 2)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	<-sigChan
+	<-sigChan*/
 
 	fmt.Println("\nShutting down...")
+
+}
+
+func gamePause(connection *amqp.Connection, toPause bool) {
+	pauseChan, err := connection.Channel()
+	if err != nil {
+		fmt.Println("Cannot create pause channel")
+	}
+
+	pauseMsg := routing.PlayingState{IsPaused: toPause}
+	err = pubsub.PublishJSON(pauseChan, string(routing.ExchangePerilDirect), string(routing.PauseKey), pauseMsg)
+	if err != nil {
+		fmt.Println("Cannot publish pause message")
+	}
 }
