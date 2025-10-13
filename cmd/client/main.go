@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -33,6 +34,24 @@ func main() {
 	)
 
 	gameState := gamelogic.NewGameState(username)
+	pubsub.SubscribeJSON(
+		connection,
+		routing.ExchangePerilDirect,
+		routing.PauseKey+"."+username,
+		routing.PauseKey,
+		pubsub.Transient,
+		handlerPause(gameState),
+	)
+
+	pubsub.SubscribeJSON(
+		connection,
+		routing.ExchangePerilTopic,
+		routing.ArmyMovesPrefix+"."+username,
+		routing.ArmyMovesPrefix+".*",
+		pubsub.Transient,
+		handlerMove(gameState),
+	)
+
 	for {
 		input := gamelogic.GetInput()
 		if len(input) == 0 {
@@ -44,7 +63,21 @@ func main() {
 		case "spawn":
 			gameState.CommandSpawn(input)
 		case "move":
-			gameState.CommandMove(input)
+			moveChan, err := connection.Channel()
+			if err != nil {
+				fmt.Println("Cannot create move channel")
+			}
+
+			moveMessage, err := gameState.CommandMove(input)
+			if err != nil {
+				fmt.Println("Cannot make a move")
+			}
+
+			if err := pubsub.PublishJSON(moveChan, routing.ExchangePerilTopic, routing.ArmyMovesPrefix+"."+username, moveMessage); err != nil {
+				fmt.Println("Cannot publish pause message")
+			}
+
+			log.Print("Move published successfully")
 		case "status":
 			gameState.CommandStatus()
 		case "help":

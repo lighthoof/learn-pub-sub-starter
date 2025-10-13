@@ -44,7 +44,7 @@ func main() {
 		case "pause":
 			gamePause(connection, true)
 		case "resume":
-			gamePause(connection, true)
+			gamePause(connection, false)
 		case "quit":
 			return
 		default:
