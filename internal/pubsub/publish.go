@@ -35,7 +35,9 @@ func PublishJSON[T any](
 	ctx := context.Background()
 	msg := amqp.Publishing{ContentType: "application/json", Body: valJSON}
 
-	ch.PublishWithContext(ctx, exchange, key, false, false, msg)
+	if err = ch.PublishWithContext(ctx, exchange, key, false, false, msg); err != nil {
+		return err
+	}
 
 	return nil
 }

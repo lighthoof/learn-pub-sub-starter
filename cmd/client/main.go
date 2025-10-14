@@ -43,13 +43,23 @@ func main() {
 		handlerPause(gameState),
 	)
 
+	warChan, _ := connection.Channel()
 	pubsub.SubscribeJSON(
 		connection,
 		routing.ExchangePerilTopic,
 		routing.ArmyMovesPrefix+"."+username,
 		routing.ArmyMovesPrefix+".*",
 		pubsub.Transient,
-		handlerMove(gameState),
+		handlerMove(gameState, warChan),
+	)
+
+	pubsub.SubscribeJSON(
+		connection,
+		routing.ExchangePerilTopic,
+		"war",
+		routing.ArmyMovesPrefix+".*",
+		pubsub.Durable,
+		handlerWar(gameState),
 	)
 
 	for {
