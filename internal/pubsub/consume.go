@@ -31,13 +31,13 @@ func SubscribeJSON[T any](
 			switch ackType {
 			case Ack:
 				cons.Ack(false)
-				log.Printf("Acknowledged: %v", message)
+				//log.Printf("Acknowledged: %v", message)
 			case NackRequeue:
 				cons.Nack(false, true)
-				log.Printf("Not acknowledged, requeue: %v", message)
+				//log.Printf("Not acknowledged, requeue: %v", message)
 			case NackDiscard:
 				cons.Nack(false, false)
-				log.Printf("Not acknowledged, discard: %v", message)
+				//log.Printf("Not acknowledged, discard: %v", message)
 			default:
 				log.Printf("Unknown ack type registered: %v", ackType)
 			}

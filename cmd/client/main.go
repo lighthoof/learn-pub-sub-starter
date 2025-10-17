@@ -59,7 +59,7 @@ func main() {
 		"war",
 		routing.ArmyMovesPrefix+".*",
 		pubsub.Durable,
-		handlerWar(gameState),
+		handlerWar(gameState, warChan),
 	)
 
 	for {
