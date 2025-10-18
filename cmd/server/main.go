@@ -21,18 +21,25 @@ func main() {
 	defer connection.Close()
 	fmt.Println("Connection successful")
 
-	pubsub.DeclareAndBind(
+	/*pubsub.DeclareAndBind(
 		connection,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
 		routing.GameLogSlug+".*",
 		pubsub.Durable,
+	)*/
+
+	pubsub.SubscribeGob(
+		connection,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.GameLogSlug+".*",
+		pubsub.Durable,
+		handlerLog(),
 	)
 
 	gamelogic.PrintServerHelp()
 
-	/*
-		}*/
 	for {
 		input := gamelogic.GetInput()
 		if len(input) == 0 {

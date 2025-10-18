@@ -1,6 +1,8 @@
 package pubsub
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"log"
 
@@ -18,11 +20,14 @@ func SubscribeJSON[T any](
 		return err
 	}
 
-	consChan, _ := queueChan.Consume(queueName, "", false, false, false, false, nil)
+	consChan, err := queueChan.Consume(queueName, "", false, false, false, false, nil)
+	if err != nil {
+		return err
+	}
 
 	go func(consumers <-chan amqp.Delivery) {
 		for cons := range consumers {
-			message, err := UnmarshalType[T](cons)
+			message, err := UnmarshalJSONType[T](cons)
 			if err != nil {
 				log.Print("Unable to unmarshal consume delivery")
 				return
@@ -31,13 +36,51 @@ func SubscribeJSON[T any](
 			switch ackType {
 			case Ack:
 				cons.Ack(false)
-				//log.Printf("Acknowledged: %v", message)
 			case NackRequeue:
 				cons.Nack(false, true)
-				//log.Printf("Not acknowledged, requeue: %v", message)
 			case NackDiscard:
 				cons.Nack(false, false)
-				//log.Printf("Not acknowledged, discard: %v", message)
+			default:
+				log.Printf("Unknown ack type registered: %v", ackType)
+			}
+
+		}
+	}(consChan)
+
+	return nil
+}
+
+func SubscribeGob[T any](
+	conn *amqp.Connection,
+	exchange, queueName, key string,
+	queueType SimpleQueueType,
+	handler func(T) AckType,
+) error {
+	queueChan, _, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
+	if err != nil {
+		return err
+	}
+
+	consChan, err := queueChan.Consume(queueName, "", false, false, false, false, nil)
+	if err != nil {
+		return err
+	}
+
+	go func(consumers <-chan amqp.Delivery) {
+		for cons := range consumers {
+			message, err := DecodeGobType[T](cons)
+			if err != nil {
+				log.Print("Unable to unmarshal consume delivery")
+				return
+			}
+			ackType := handler(message)
+			switch ackType {
+			case Ack:
+				cons.Ack(false)
+			case NackRequeue:
+				cons.Nack(false, true)
+			case NackDiscard:
+				cons.Nack(false, false)
 			default:
 				log.Printf("Unknown ack type registered: %v", ackType)
 			}
@@ -92,9 +135,26 @@ func DeclareAndBind(
 	return ch, queue, nil
 }
 
-func UnmarshalType[T any](d amqp.Delivery) (out T, err error) {
+func UnmarshalJSONType[T any](d amqp.Delivery) (out T, err error) {
 
 	if err := json.Unmarshal(d.Body, &out); err != nil {
+		log.Print("Unable to unmarshal the delivery")
+		return out, err
+	}
+
+	return out, err
+}
+
+func DecodeGobType[T any](d amqp.Delivery) (out T, err error) {
+
+	var reader bytes.Reader
+	_, err = reader.Read(d.Body)
+	if err != nil {
+		return out, err
+	}
+	dec := gob.NewDecoder(&reader)
+
+	if err := dec.Decode(&out); err != nil {
 		log.Print("Unable to unmarshal the delivery")
 		return out, err
 	}

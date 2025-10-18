@@ -50,7 +50,7 @@ func handlerWar(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.Recogn
 	return func(rw gamelogic.RecognitionOfWar) pubsub.AckType {
 		defer fmt.Print("> ")
 		logMessage := ""
-		username := gs.GetPlayerSnap().Username
+		username := gs.GetUsername()
 
 		warOut, winner, loser := gs.HandleWar(rw)
 		fmt.Printf("DEBUG winner=%q loser=%q outcome=%v\n", winner, loser, warOut)

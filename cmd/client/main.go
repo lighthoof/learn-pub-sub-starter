@@ -24,11 +24,10 @@ func main() {
 
 	username, _ := gamelogic.ClientWelcome()
 
-	queueName := routing.PauseKey + "." + username
 	pubsub.DeclareAndBind(
 		connection,
 		routing.ExchangePerilDirect,
-		queueName,
+		routing.PauseKey+"."+username,
 		routing.PauseKey,
 		pubsub.Transient,
 	)
