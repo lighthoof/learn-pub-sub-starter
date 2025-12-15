@@ -33,7 +33,7 @@ func main() {
 		connection,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
-		routing.GameLogSlug+".*",
+		routing.ArmyMovesPrefix+".*",
 		pubsub.Durable,
 		handlerLog(),
 	)
