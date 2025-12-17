@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -42,12 +40,42 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to subscribe to pause ququeL %v", err)
 	}
-	fmt.Printf("Queue %v declared and bound!", queue.Name)
+	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
-	//Waiting for input
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	<-c
-	fmt.Printf("Closing connection to RMQ")
+	//Create a new game state for the user
+	gameState := gamelogic.NewGameState(userName)
 
+	//REPL loop
+	for {
+		words := gamelogic.GetInput()
+		if len(words) == 0 {
+			continue
+		}
+
+		//parse input and run relevant code
+		switch words[0] {
+		case "spawn":
+			if err = gameState.CommandSpawn(words); err != nil {
+				log.Printf("Error during spawning a unit: %v", err)
+				continue
+			}
+		case "move":
+			_, err := gameState.CommandMove(words)
+			if err != nil {
+				log.Printf("Error during moving a unit: %v", err)
+				continue
+			}
+		case "status":
+			gameState.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "spam":
+			fmt.Println("Spamming is not allowed yet")
+		case "quit":
+			gamelogic.PrintQuit()
+			return
+		default:
+			fmt.Println("Incorrect command, please use the command from provided list")
+		}
+	}
 }
