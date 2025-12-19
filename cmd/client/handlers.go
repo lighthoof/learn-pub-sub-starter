@@ -1,0 +1,73 @@
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
+	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) pubsub.AckType {
+	return func(playState routing.PlayingState) pubsub.AckType {
+		defer fmt.Print("> ")
+		gs.HandlePause(playState)
+		return pubsub.Ack
+	}
+
+}
+
+func handlerMove(gs *gamelogic.GameState, pubChannel *amqp.Channel) func(gamelogic.ArmyMove) pubsub.AckType {
+	return func(move gamelogic.ArmyMove) pubsub.AckType {
+		defer fmt.Print("> ")
+		switch gs.HandleMove(move) { //move outcome
+		case gamelogic.MoveOutComeSafe:
+			return pubsub.Ack
+		case gamelogic.MoveOutcomeMakeWar:
+			err := pubsub.PublishJSON(
+				pubChannel,
+				routing.ExchangePerilTopic,
+				routing.WarRecognitionsPrefix+"."+gs.GetUsername(),
+				gamelogic.RecognitionOfWar{
+					Attacker: move.Player,
+					Defender: gs.Player,
+				},
+			)
+			if err != nil {
+				log.Printf("Unable to publish move message: %v", err)
+				return pubsub.NackRequeue
+			}
+			return pubsub.Ack
+		case gamelogic.MoveOutcomeSamePlayer:
+			return pubsub.NackDiscard
+		}
+		fmt.Println("error : unknown move outcome")
+		return pubsub.NackDiscard
+
+	}
+}
+
+func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.AckType {
+	return func(war gamelogic.RecognitionOfWar) pubsub.AckType {
+		defer fmt.Print("> ")
+		//Handle the potential war
+		outcome, _ /*winner*/, _ /*loser*/ := gs.HandleWar(war)
+		switch outcome {
+		case gamelogic.WarOutcomeNotInvolved:
+			return pubsub.NackRequeue
+		case gamelogic.WarOutcomeNoUnits:
+			return pubsub.NackDiscard
+		case gamelogic.WarOutcomeOpponentWon:
+			return pubsub.Ack
+		case gamelogic.WarOutcomeYouWon:
+			return pubsub.Ack
+		case gamelogic.WarOutcomeDraw:
+			return pubsub.Ack
+		}
+		fmt.Println("Unknown war outcome")
+		return pubsub.NackDiscard
+	}
+
+}

@@ -7,20 +7,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type SimpleQueueType int
-type AckType int
-
-const (
-	Durable SimpleQueueType = iota
-	Transient
-)
-
-const (
-	Ack AckType = iota
-	NackRequeue
-	NackDiscard
-)
-
 func PublishJSON[T any](
 	ch *amqp.Channel,
 	exchange,
