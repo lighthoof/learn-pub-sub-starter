@@ -1,6 +1,8 @@
 package pubsub
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -30,6 +32,69 @@ func SubscribeJSON[T any](
 	key string,
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
 	handler func(T) AckType,
+) error {
+	//create an unmarshaller
+	unmarshaller := func(data []byte) (T, error) {
+		var target T
+		err := json.Unmarshal(data, &target)
+		return target, err
+	}
+
+	//subscribe to JSON format queue
+	if err := subscribe(
+		conn,
+		exchange,
+		queueName,
+		key,
+		queueType,
+		handler,
+		unmarshaller,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+func SubscribeGob[T any](
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
+	handler func(T) AckType,
+) error {
+	//create an unmarshaller
+	unmarshaller := func(data []byte) (T, error) {
+		buffer := bytes.NewBuffer(data)
+		var target T
+		dec := gob.NewDecoder(buffer) //create a decoder
+		err := dec.Decode(&target)
+		return target, err
+	}
+
+	//subscribe to JSON format queue
+	if err := subscribe(
+		conn,
+		exchange,
+		queueName,
+		key,
+		queueType,
+		handler,
+		unmarshaller,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+func subscribe[T any](
+	conn *amqp.Connection, //connection
+	exchange, //exchange name
+	queueName, //queue name
+	key string, //routing key
+	queueType SimpleQueueType, //queue type
+	handler func(T) AckType, //handler function
+	unmarshaller func([]byte) (T, error), //unmarshaller function
 ) error {
 	//Declare and biand a queue to subscribe to provided exchange by the key
 	queueChannel, queue, err := DeclareAndBind(
@@ -61,8 +126,8 @@ func SubscribeJSON[T any](
 	go func() {
 		for message := range consumeChan {
 			//unmarshal the body to raw bytes
-			var rawBody T
-			if err = json.Unmarshal(message.Body, &rawBody); err != nil {
+			rawBody, err := unmarshaller(message.Body)
+			if err != nil {
 				log.Printf("Unable to unmarshal message: %v\n", err)
 			}
 
@@ -91,7 +156,6 @@ func SubscribeJSON[T any](
 			}
 		}
 	}()
-
 	return nil
 }
 

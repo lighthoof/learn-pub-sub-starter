@@ -28,7 +28,7 @@ func main() {
 	}
 
 	//Bind the log queue to exchange
-	_, queue, err := pubsub.DeclareAndBind(
+	/*_, queue, err := pubsub.DeclareAndBind(
 		conn,                       //connection
 		routing.ExchangePerilTopic, //exchange name
 		routing.GameLogSlug,        //queue name
@@ -38,7 +38,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to subscribe to pause quque %v", err)
 	}
-	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
+	fmt.Printf("Queue %v declared and bound!\n", queue.Name)*/
+	if err = pubsub.SubscribeGob(
+		conn,                       //connection
+		routing.ExchangePerilTopic, //exchange name
+		routing.GameLogSlug,        //queue name
+		routing.GameLogSlug+".*",   //routing key
+		pubsub.Durable,             //queue type
+		handlerLogs(),              //handler function
+	); err != nil {
+		//return aza
+	}
 
 	//Print help on startup
 	gamelogic.PrintServerHelp()

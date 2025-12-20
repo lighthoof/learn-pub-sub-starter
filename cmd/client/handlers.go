@@ -49,21 +49,42 @@ func handlerMove(gs *gamelogic.GameState, pubChannel *amqp.Channel) func(gamelog
 	}
 }
 
-func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.AckType {
+func handlerWar(gs *gamelogic.GameState, pubChannel *amqp.Channel) func(gamelogic.RecognitionOfWar) pubsub.AckType {
 	return func(war gamelogic.RecognitionOfWar) pubsub.AckType {
 		defer fmt.Print("> ")
 		//Handle the potential war
-		outcome, _ /*winner*/, _ /*loser*/ := gs.HandleWar(war)
+		outcome, winner, loser := gs.HandleWar(war)
 		switch outcome {
 		case gamelogic.WarOutcomeNotInvolved:
 			return pubsub.NackRequeue
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeOpponentWon:
+			if err := publishGameLog(
+				pubChannel,
+				gs,
+				fmt.Sprintf("%v won a war against %v", winner, loser),
+			); err != nil {
+				return pubsub.NackRequeue
+			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeYouWon:
+			if err := publishGameLog(
+				pubChannel,
+				gs,
+				fmt.Sprintf("%v won a war against %v", winner, loser),
+			); err != nil {
+				return pubsub.NackRequeue
+			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeDraw:
+			if err := publishGameLog(
+				pubChannel,
+				gs,
+				fmt.Sprintf("A war between %v and %v resulted in a draw", winner, loser),
+			); err != nil {
+				return pubsub.NackRequeue
+			}
 			return pubsub.Ack
 		}
 		fmt.Println("Unknown war outcome")
