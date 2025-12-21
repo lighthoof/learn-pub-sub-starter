@@ -107,7 +107,10 @@ func subscribe[T any](
 	if err != nil {
 		return err
 	}
-
+	//Limit the pre-fetch to 10 messages
+	if err := queueChannel.Qos(10, 0, false); err != nil {
+		return err
+	}
 	//Create a consumer channel for the queue
 	consumeChan, err := queueChannel.Consume(
 		queue.Name, //queue name
